@@ -28,12 +28,6 @@ class CurlRequest
      */
     public static $lastHttpCode;
 
-    /**
-     * HTTP response headers of last executed request
-     *
-     * @var array
-     */
-    public static $lastHttpResponseHeaders = array();
 
     /**
      * Initialize the curl resource
@@ -82,6 +76,12 @@ class CurlRequest
         $ch = self::init($url, $httpHeaders);
 
         return self::processRequest($ch);
+    }
+    public static function getCurlResponse($url, $httpHeaders = array())
+    {
+       //Initialize the Curl resource
+       $ch = self::init($url, $httpHeaders);
+       return self::processRequestGetResponse($ch);
     }
 
     /**
@@ -148,7 +148,7 @@ class CurlRequest
      *
      * @return string
      */
-    protected static function processRequest($ch)
+    protected static function processRequestGetResponse($ch)
     {
         # Check for 429 leaky bucket error
         while (1) {
@@ -176,9 +176,9 @@ class CurlRequest
         // close curl resource to free up system resources
         curl_close($ch);
 
-        self::$lastHttpResponseHeaders = $response->getHeaders();
-
-        return $response->getBody();
+        return $response;
     }
-
+    protected static function processRequest($ch) {
+      return self::processRequestGetResponse($ch)->getBody();
+    }
 }

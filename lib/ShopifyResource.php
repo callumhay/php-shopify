@@ -12,7 +12,6 @@ namespace PHPShopify;
 use PHPShopify\Exception\ApiException;
 use PHPShopify\Exception\SdkException;
 use PHPShopify\Exception\CurlException;
-use Psr\Http\Message\ResponseInterface;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,13 +29,6 @@ abstract class ShopifyResource
      * @var array
      */
     protected $httpHeaders = array();
-
-    /**
-     * HTTP response headers of last executed request
-     *
-     * @var array
-     */
-    public static $lastHttpResponseHeaders = array();
 
     /**
      * The base URL of the API Resource (excluding the '.json' extension).
@@ -339,17 +331,22 @@ abstract class ShopifyResource
         if (!$dataKey) $dataKey = $this->id ? $this->resourceKey : $this->pluralizeKey();
 
         return $this->processResponse($response, $dataKey);
-
     }
+    public function get_with_headers($urlParams = array(), $url = null, $dataKey = null)
+    {
+        if (!$url) $url  = $this->generateUrl($urlParams);
 
+        list($headers, $body) = HttpRequestJson::get_with_header($url, $this->httpHeaders);
+
+        if (!$dataKey) $dataKey = $this->id ? $this->resourceKey : $this->pluralizeKey();
+
+        return [$headers, $this->processResponse($body, $dataKey)];
+    }
+    
     /**
      * Get count for the number of resources available
      *
      * @param array $urlParams Check Shopify API reference of the specific resource for the list of URL parameters
-     *
-     * @throws SdkException
-     * @throws ApiException if the response has an error specified
-     * @throws CurlException if response received with unexpected HTTP code.
      *
      * @return integer
      */
@@ -370,8 +367,6 @@ abstract class ShopifyResource
      * @param mixed $query
      *
      * @throws SdkException if search is not enabled for the resouce
-     * @throws ApiException if the response has an error specified
-     * @throws CurlException if response received with unexpected HTTP code.
      *
      * @return array
      */
@@ -397,9 +392,6 @@ abstract class ShopifyResource
      *
      * @uses HttpRequestJson::post() to send the HTTP request
      *
-     * @throws ApiException if the response has an error specified
-     * @throws CurlException if response received with unexpected HTTP code.
-     *
      * @return array
      */
     public function post($dataArray, $url = null, $wrapData = true)
@@ -422,9 +414,6 @@ abstract class ShopifyResource
      *
      * @uses HttpRequestJson::put() to send the HTTP request
      *
-     * @throws ApiException if the response has an error specified
-     * @throws CurlException if response received with unexpected HTTP code.
-     *
      * @return array
      */
     public function put($dataArray, $url = null, $wrapData = true)
@@ -446,9 +435,6 @@ abstract class ShopifyResource
      * @param string $url
      *
      * @uses HttpRequestJson::delete() to send the HTTP request
-     *
-     * @throws ApiException if the response has an error specified
-     * @throws CurlException if response received with unexpected HTTP code.
      *
      * @return array an empty array will be returned if the request is successfully completed
      */
@@ -518,29 +504,23 @@ abstract class ShopifyResource
      */
     public function processResponse($responseArray, $dataKey = null)
     {
-        self::$lastHttpResponseHeaders = CurlRequest::$lastHttpResponseHeaders;
-
         if ($responseArray === null) {
             //Something went wrong, Checking HTTP Codes
             $httpOK = 200; //Request Successful, OK.
             $httpCreated = 201; //Create Successful.
-            $httpDeleted = 204; //Delete Successful
 
             //should be null if any other library used for http calls
             $httpCode = CurlRequest::$lastHttpCode;
 
-            if ($httpCode != null && $httpCode != $httpOK && $httpCode != $httpCreated && $httpCode != $httpDeleted) {
-                throw new Exception\CurlException("Request failed with HTTP Code $httpCode.", $httpCode);
+            if ($httpCode != null && $httpCode != $httpOK && $httpCode != $httpCreated) {
+                throw new Exception\CurlException("Request failed with HTTP Code $httpCode.");
             }
         }
-
-        $lastResponseHeaders = CurlRequest::$lastHttpResponseHeaders;
-        $this->getLinks($lastResponseHeaders);
 
         if (isset($responseArray['errors'])) {
             $message = $this->castString($responseArray['errors']);
 
-            throw new ApiException($message, CurlRequest::$lastHttpCode);
+            throw new ApiException($message);
         }
 
         if ($dataKey && isset($responseArray[$dataKey])) {

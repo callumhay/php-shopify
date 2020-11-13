@@ -38,8 +38,8 @@ class HttpRequestJson
     /**
      * Prepare the data and request headers before making the call
      *
-     * @param array $httpHeaders
      * @param array $dataArray
+     * @param array $httpHeaders
      *
      * @return void
      */
@@ -62,7 +62,7 @@ class HttpRequestJson
      * @param string $url
      * @param array $httpHeaders
      *
-     * @return array
+     * @return string
      */
     public static function get($url, $httpHeaders = array())
     {
@@ -72,6 +72,12 @@ class HttpRequestJson
 
         return self::processResponse($response);
     }
+    public static function get_with_header($url, $httpHeaders = array())
+    {
+      self::prepareRequest($httpHeaders);
+      $curlResponse = CurlRequest::getCurlResponse($url, self::$httpHeaders);
+      return [$curlResponse->getHeaders(), self::processResponse($curlResponse->getBody())];
+    }
 
     /**
      * Implement a POST request and return json decoded output
@@ -80,7 +86,7 @@ class HttpRequestJson
      * @param array $dataArray
      * @param array $httpHeaders
      *
-     * @return array
+     * @return string
      */
     public static function post($url, $dataArray, $httpHeaders = array())
     {
@@ -98,7 +104,7 @@ class HttpRequestJson
      * @param array $dataArray
      * @param array $httpHeaders
      *
-     * @return array
+     * @return string
      */
     public static function put($url, $dataArray, $httpHeaders = array())
     {
@@ -115,7 +121,7 @@ class HttpRequestJson
      * @param string $url
      * @param array $httpHeaders
      *
-     * @return array
+     * @return string
      */
     public static function delete($url, $httpHeaders = array())
     {
